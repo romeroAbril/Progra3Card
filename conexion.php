@@ -1,19 +1,14 @@
 <?php
+
 $server = "localhost";
-$usuario = "root"; 
+$usuario = "root";
 $password = "root";
 $baseDatos = "mi_banco_db";
 
+$conn = new mysqli($server, $usuario, $password, $baseDatos);
 
-// Crea conexión (objeto)
-$conexión = new mysqli($server, $usuario, $password);
+if ($conn->connect_error) {
+    die("Error de conexión: " . $conn->connect_error);
+}
 
-// Verifica establecimientro de la conexión:
-if ($conexión->connect_error) {
-  die("Fallo al conectar: " . $conexión->connect_error);
-}
-else {
-  echo "Conexión exitosa a MySQL <br>";
-}
-$conexión->close();
 ?>
