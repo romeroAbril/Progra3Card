@@ -43,6 +43,130 @@ namespace Progra3Card.Administrativo
 
         // Funciones a completar:
 
+
+         static void MenuEmitirTarjeta()
+        {
+             Console.Clear();
+             Console.WriteLine("--- EMITIR NUEVA TARJETA ---");
+
+            Console.Write("Documento: ");
+            string documento = Console.ReadLine();
+
+            Console.Write("Tipo de documento (DNI/PASAPORTE): ");
+            string tipoDoc = Console.ReadLine().ToUpper();
+
+            Console.Write("Nombre: ");
+            string nombre = Console.ReadLine();
+
+            Console.Write("Apellido: ");
+            string apellido = Console.ReadLine();
+
+            Console.Write("Fecha de nacimiento (AAAA-MM-DD): ");
+            string fechaNacimiento = Console.ReadLine();
+
+            Console.Write("Email: ");
+            string email = Console.ReadLine();
+
+            Console.Write("Número de tarjeta: ");
+            string numeroTarjeta = Console.ReadLine();
+
+            Console.WriteLine("\nSeleccione el Banco Emisor:");
+            Console.WriteLine("1. Banco Nación");
+            Console.WriteLine("2. Banco Provincia");
+            Console.WriteLine("3. Banco Galicia");
+            Console.WriteLine("4. Banco Santander");
+            Console.WriteLine("5. Banco BBVA");
+            Console.WriteLine("6. Banco Macro");
+            Console.Write("Opción: ");
+
+            string banco = "";
+
+            switch (Console.ReadLine())
+            {
+                case "1":
+                    banco = "Banco Nación";
+                 break;
+                case "2":
+                     banco = "Banco Provincia";
+                break;
+                case "3":
+                    banco = "Banco Galicia";
+                break;
+                case "4":
+                     banco = "Banco Santander";
+                break;
+                case "5":
+                     banco = "Banco BBVA";
+                break;
+                case "6":
+                     banco = "Banco Macro";
+                 break;
+                 default:
+                     Console.WriteLine("Opción inválida.");
+                     Console.ReadKey();
+                return;
+            }
+
+            using (MySqlConnection conn = new MySqlConnection(connectionString))
+            {
+                 conn.Open();
+
+                MySqlTransaction trans = conn.BeginTransaction();
+
+                 try
+                {
+                     // INSERT en usuarios
+                     string sqlUsuario = @"INSERT INTO usuarios
+                     (documento, tipo_doc, nombre, apellido, fecha_nacimiento, email, usuario, password)
+                     VALUES
+                     (@documento, @tipoDoc, @nombre, @apellido, @fechaNacimiento, @email, NULL, NULL)";
+
+                     MySqlCommand cmdUsuario = new MySqlCommand(sqlUsuario, conn, trans);
+
+                    cmdUsuario.Parameters.AddWithValue("@documento", documento);
+                    cmdUsuario.Parameters.AddWithValue("@tipoDoc", tipoDoc);
+                    cmdUsuario.Parameters.AddWithValue("@nombre", nombre);
+                    cmdUsuario.Parameters.AddWithValue("@apellido", apellido);
+                    cmdUsuario.Parameters.AddWithValue("@fechaNacimiento", fechaNacimiento);
+                    cmdUsuario.Parameters.AddWithValue("@email", email);
+
+                    cmdUsuario.ExecuteNonQuery();
+
+                    // INSERT en tarjetas
+                    string sqlTarjeta = @"INSERT INTO tarjetas
+                    (numero_tarjeta, banco_emisor, estado, saldo, dni_titular)
+                    VALUES
+                    (@numeroTarjeta, @banco, 'Activa', 0, @documento)";
+
+                    MySqlCommand cmdTarjeta = new MySqlCommand(sqlTarjeta, conn, trans);
+
+                    cmdTarjeta.Parameters.AddWithValue("@numeroTarjeta", numeroTarjeta);
+                    cmdTarjeta.Parameters.AddWithValue("@banco", banco);
+                    cmdTarjeta.Parameters.AddWithValue("@documento", documento);
+
+                    cmdTarjeta.ExecuteNonQuery();
+
+                    trans.Commit();
+
+                     Console.ForegroundColor = ConsoleColor.Green;
+                    Console.WriteLine("\nTarjeta emitida correctamente.");
+                    Console.ResetColor();
+                }
+                 catch (Exception ex)
+                {
+                    trans.Rollback();
+
+                     Console.ForegroundColor = ConsoleColor.Red;
+                     Console.WriteLine("\nError al emitir la tarjeta.");
+                     Console.WriteLine(ex.Message);
+                     Console.ResetColor();
+                }
+            }
+
+             Console.WriteLine("\nPresione una tecla para volver al menú...");
+             Console.ReadKey();
+}
+
         static void MenuListarTarjetas()
         {
             Console.Clear();
@@ -117,118 +241,186 @@ namespace Progra3Card.Administrativo
         // MÉTODOS BASE QUE DEBEN COMPLETAR CON LA LÓGICA 
         // =========================================================================
 
-static void ObtenerYMostrarTarjetas()
-{
-    using (MySqlConnection conn = new MySqlConnection(connectionString))
-    {
-        conn.Open();
-
-        string sql = @"SELECT num_cuenta,
-                              numero_tarjeta,
-                              banco_emisor,
-                              dni_titular
-                       FROM tarjetas";
-
-        MySqlCommand cmd = new MySqlCommand(sql, conn);
-
-        MySqlDataReader reader = cmd.ExecuteReader();
-
-        while (reader.Read())
+        static void ObtenerYMostrarTarjetas()
         {
-            Console.WriteLine("{0,-12} {1,-18} {2,-20} {3,-15}",
-                reader["num_cuenta"],
-                reader["numero_tarjeta"],
-                reader["banco_emisor"],
-                reader["dni_titular"]);
+                using (MySqlConnection conn = new MySqlConnection(connectionString))
+                {
+                     conn.Open();
+
+                        string sql = @"SELECT num_cuenta,
+                                     numero_tarjeta,
+                                     banco_emisor,
+                                     dni_titular
+                                     FROM tarjetas";
+
+                     MySqlCommand cmd = new MySqlCommand(sql, conn);
+
+                    MySqlDataReader reader = cmd.ExecuteReader();
+
+                    while (reader.Read())
+                    {
+                         Console.WriteLine("{0,-12} {1,-18} {2,-20} {3,-15}",
+                                 reader["num_cuenta"],
+                                 reader["numero_tarjeta"],
+                                 reader["banco_emisor"],
+                                 reader["dni_titular"]);
+                    }
+
+                     reader.Close();
+                 }
         }
+                static void MostrarDetalleCompleto(int cuenta)
+                {
+                    using (MySqlConnection conn = new MySqlConnection(connectionString))
+                    {
+                        conn.Open();
 
-        reader.Close();
-    }
-}
-static void MostrarDetalleCompleto(int cuenta)
-{
-    using (MySqlConnection conn = new MySqlConnection(connectionString))
-    {
-        conn.Open();
+                            string sql = @"
+                             SELECT u.nombre,
+                             u.apellido,
+                             u.documento,
+                             u.email,
+                             t.numero_tarjeta,
+                             t.banco_emisor,
+                             t.estado,
+                             t.saldo
+                            FROM usuarios u
+                            INNER JOIN tarjetas t
+                            ON u.documento = t.dni_titular
+                            WHERE t.num_cuenta = @cuenta";
 
-        string sql = @"
-        SELECT u.nombre,
-               u.apellido,
-               u.documento,
-               u.email,
-               t.numero_tarjeta,
-               t.banco_emisor,
-               t.estado,
-               t.saldo
-        FROM usuarios u
-        INNER JOIN tarjetas t
-        ON u.documento = t.dni_titular
-        WHERE t.num_cuenta = @cuenta";
+                            MySqlCommand cmd = new MySqlCommand(sql, conn);
 
-        MySqlCommand cmd = new MySqlCommand(sql, conn);
+                            cmd.Parameters.AddWithValue("@cuenta", cuenta);
 
-        cmd.Parameters.AddWithValue("@cuenta", cuenta);
+                             MySqlDataReader reader = cmd.ExecuteReader();
 
-        MySqlDataReader reader = cmd.ExecuteReader();
+                             if (reader.Read())
+                                {
+                                    Console.WriteLine("\n===== DATOS DEL CLIENTE =====");
 
-        if (reader.Read())
-        {
-            Console.WriteLine("\n===== DATOS DEL CLIENTE =====");
+                                    Console.WriteLine("Nombre: " + reader["nombre"]);
+                                    Console.WriteLine("Apellido: " + reader["apellido"]);
+                                    Console.WriteLine("Documento: " + reader["documento"]);
+                                    Console.WriteLine("Email: " + reader["email"]);
 
-            Console.WriteLine("Nombre: " + reader["nombre"]);
-            Console.WriteLine("Apellido: " + reader["apellido"]);
-            Console.WriteLine("Documento: " + reader["documento"]);
-            Console.WriteLine("Email: " + reader["email"]);
+                                    Console.WriteLine();
 
-            Console.WriteLine();
+                                    Console.WriteLine("===== DATOS DE LA TARJETA =====");
 
-            Console.WriteLine("===== DATOS DE LA TARJETA =====");
+                                    Console.WriteLine("Número: " + reader["numero_tarjeta"]);
+                                    Console.WriteLine("Banco: " + reader["banco_emisor"]);
+                                    Console.WriteLine("Estado: " + reader["estado"]);
+                                    Console.WriteLine("Saldo: $" + reader["saldo"]);
+                                }
+                            else
+                                 {
+                                     Console.WriteLine("No existe una tarjeta con ese número de cuenta.");
+                                 }
 
-            Console.WriteLine("Número: " + reader["numero_tarjeta"]);
-            Console.WriteLine("Banco: " + reader["banco_emisor"]);
-            Console.WriteLine("Estado: " + reader["estado"]);
-            Console.WriteLine("Saldo: $" + reader["saldo"]);
-        }
-        else
-        {
-            Console.WriteLine("No existe una tarjeta con ese número de cuenta.");
-        }
+                        reader.Close();
+                    }
+                 }
 
-        reader.Close();
-    }
-}
+            static bool DarDeBajaTarjeta(int cuenta)
+            {
+                 using (MySqlConnection conn = new MySqlConnection(connectionString))
+                 {
+                    conn.Open();
 
-static bool DarDeBajaTarjeta(int cuenta)
-{
-    using (MySqlConnection conn = new MySqlConnection(connectionString))
-    {
-        conn.Open();
+                        // Buscar el DNI del titular
+                        string sqlBuscar = "SELECT dni_titular FROM tarjetas WHERE num_cuenta = @cuenta";
 
-        // Buscar el DNI del titular
-        string sqlBuscar = "SELECT dni_titular FROM tarjetas WHERE num_cuenta = @cuenta";
+                        MySqlCommand cmdBuscar = new MySqlCommand(sqlBuscar, conn);
+                        cmdBuscar.Parameters.AddWithValue("@cuenta", cuenta);
 
-        MySqlCommand cmdBuscar = new MySqlCommand(sqlBuscar, conn);
-        cmdBuscar.Parameters.AddWithValue("@cuenta", cuenta);
+                        object resultado = cmdBuscar.ExecuteScalar();
 
-        object resultado = cmdBuscar.ExecuteScalar();
+                        if (resultado == null)
+                        {
+                            return false; // No existe esa cuenta
+                        }
 
-        if (resultado == null)
-        {
-            return false; // No existe esa cuenta
-        }
+                        string dni = resultado.ToString();
 
-        string dni = resultado.ToString();
+                         // Eliminar el usuario
+                         string sqlEliminar = "DELETE FROM usuarios WHERE documento = @dni";
 
-        // Eliminar el usuario
-        string sqlEliminar = "DELETE FROM usuarios WHERE documento = @dni";
+                        MySqlCommand cmdEliminar = new MySqlCommand(sqlEliminar, conn);
+                        cmdEliminar.Parameters.AddWithValue("@dni", dni);
 
-        MySqlCommand cmdEliminar = new MySqlCommand(sqlEliminar, conn);
-        cmdEliminar.Parameters.AddWithValue("@dni", dni);
+                        int filas = cmdEliminar.ExecuteNonQuery();
 
-        int filas = cmdEliminar.ExecuteNonQuery();
+                        return filas > 0;
+                 }
+            }  
 
-        return filas > 0;
-    }
-}
+
+
+             static void MenuEmitirLiquidacion()
+            {
+                 Console.Clear();
+                 Console.WriteLine("--- EMITIR NUEVA LIQUIDACIÓN ---");
+
+                Console.Write("Número de Cuenta: ");
+                int numCuenta = Convert.ToInt32(Console.ReadLine());
+
+                Console.Write("Período (AAAA-MM): ");
+                string periodo = Console.ReadLine();
+
+                Console.Write("Fecha de Vencimiento (AAAA-MM-DD): ");
+                string fechaVencimiento = Console.ReadLine();
+
+                Console.Write("Total a Pagar: ");
+                decimal total = Convert.ToDecimal(Console.ReadLine());
+
+                Console.Write("Pago Mínimo: ");
+                decimal pagoMinimo = Convert.ToDecimal(Console.ReadLine());
+
+                using (MySqlConnection conn = new MySqlConnection(connectionString))
+                {
+                    conn.Open();
+
+                    try
+                        {
+                         string sql = @"INSERT INTO liquidaciones
+                                        (num_cuenta, periodo, fecha_vencimiento, total_a_pagar, pago_minimo)
+                                         VALUES
+                                        (@cuenta, @periodo, @vencimiento, @total, @pagoMinimo)";
+
+                             MySqlCommand cmd = new MySqlCommand(sql, conn);
+
+                            cmd.Parameters.AddWithValue("@cuenta", numCuenta);
+                            cmd.Parameters.AddWithValue("@periodo", periodo);
+                            cmd.Parameters.AddWithValue("@vencimiento", fechaVencimiento);
+                            cmd.Parameters.AddWithValue("@total", total);
+                            cmd.Parameters.AddWithValue("@pagoMinimo", pagoMinimo);
+
+                            int filas = cmd.ExecuteNonQuery();
+
+                            if (filas > 0)
+                            {
+                                Console.ForegroundColor = ConsoleColor.Green;
+                                Console.WriteLine("\nLiquidación emitida correctamente.");
+                            }
+                            else
+                            {
+                                Console.ForegroundColor = ConsoleColor.Red;
+                                Console.WriteLine("\nNo se pudo emitir la liquidación.");
+                            }
+                        }
+                         catch (Exception ex)
+                        {
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Console.WriteLine("\nError: " + ex.Message);
+                        }
+
+                    Console.ResetColor();
+                }
+
+                     Console.WriteLine("\nPresione una tecla para volver al menú...");
+                     Console.ReadKey();
+            }
+
     }
 }
