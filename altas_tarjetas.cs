@@ -117,22 +117,118 @@ namespace Progra3Card.Administrativo
         // MÉTODOS BASE QUE DEBEN COMPLETAR CON LA LÓGICA 
         // =========================================================================
 
-        static void ObtenerYMostrarTarjetas()
+static void ObtenerYMostrarTarjetas()
+{
+    using (MySqlConnection conn = new MySqlConnection(connectionString))
+    {
+        conn.Open();
+
+        string sql = @"SELECT num_cuenta,
+                              numero_tarjeta,
+                              banco_emisor,
+                              dni_titular
+                       FROM tarjetas";
+
+        MySqlCommand cmd = new MySqlCommand(sql, conn);
+
+        MySqlDataReader reader = cmd.ExecuteReader();
+
+        while (reader.Read())
         {
-            // Completar 
-            // Ejemplo de impresión dentro del bucle: 
-            // Console.WriteLine("{0,-12} {1,-18} {2,-20} {3,-15}", reader["num_cuenta"], reader["numero_tarjeta"], ...);
+            Console.WriteLine("{0,-12} {1,-18} {2,-20} {3,-15}",
+                reader["num_cuenta"],
+                reader["numero_tarjeta"],
+                reader["banco_emisor"],
+                reader["dni_titular"]);
         }
 
-        static void MostrarDetalleCompleto(int cuenta)
+        reader.Close();
+    }
+}
+static void MostrarDetalleCompleto(int cuenta)
+{
+    using (MySqlConnection conn = new MySqlConnection(connectionString))
+    {
+        conn.Open();
+
+        string sql = @"
+        SELECT u.nombre,
+               u.apellido,
+               u.documento,
+               u.email,
+               t.numero_tarjeta,
+               t.banco_emisor,
+               t.estado,
+               t.saldo
+        FROM usuarios u
+        INNER JOIN tarjetas t
+        ON u.documento = t.dni_titular
+        WHERE t.num_cuenta = @cuenta";
+
+        MySqlCommand cmd = new MySqlCommand(sql, conn);
+
+        cmd.Parameters.AddWithValue("@cuenta", cuenta);
+
+        MySqlDataReader reader = cmd.ExecuteReader();
+
+        if (reader.Read())
         {
-            // Completar haciendo un SELECT con JOIN de usuarios y tarjetas WHERE num_cuenta = @cuenta
+            Console.WriteLine("\n===== DATOS DEL CLIENTE =====");
+
+            Console.WriteLine("Nombre: " + reader["nombre"]);
+            Console.WriteLine("Apellido: " + reader["apellido"]);
+            Console.WriteLine("Documento: " + reader["documento"]);
+            Console.WriteLine("Email: " + reader["email"]);
+
+            Console.WriteLine();
+
+            Console.WriteLine("===== DATOS DE LA TARJETA =====");
+
+            Console.WriteLine("Número: " + reader["numero_tarjeta"]);
+            Console.WriteLine("Banco: " + reader["banco_emisor"]);
+            Console.WriteLine("Estado: " + reader["estado"]);
+            Console.WriteLine("Saldo: $" + reader["saldo"]);
+        }
+        else
+        {
+            Console.WriteLine("No existe una tarjeta con ese número de cuenta.");
         }
 
-        static bool DarDeBajaTarjeta(int cuenta)
+        reader.Close();
+    }
+}
+
+static bool DarDeBajaTarjeta(int cuenta)
+{
+    using (MySqlConnection conn = new MySqlConnection(connectionString))
+    {
+        conn.Open();
+
+        // Buscar el DNI del titular
+        string sqlBuscar = "SELECT dni_titular FROM tarjetas WHERE num_cuenta = @cuenta";
+
+        MySqlCommand cmdBuscar = new MySqlCommand(sqlBuscar, conn);
+        cmdBuscar.Parameters.AddWithValue("@cuenta", cuenta);
+
+        object resultado = cmdBuscar.ExecuteScalar();
+
+        if (resultado == null)
         {
-            // Completar usando un DELETE FROM tarjetas WHERE num_cuenta = @cuenta
-            return false;
+            return false; // No existe esa cuenta
         }
+
+        string dni = resultado.ToString();
+
+        // Eliminar el usuario
+        string sqlEliminar = "DELETE FROM usuarios WHERE documento = @dni";
+
+        MySqlCommand cmdEliminar = new MySqlCommand(sqlEliminar, conn);
+        cmdEliminar.Parameters.AddWithValue("@dni", dni);
+
+        int filas = cmdEliminar.ExecuteNonQuery();
+
+        return filas > 0;
+    }
+}
     }
 }
