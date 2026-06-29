@@ -5,7 +5,7 @@ namespace Progra3Card.Administrativo
 {
     class Program
     {
-        private static string connectionString = "Server=localhost;Database=mi_banco_db;Uid=root;Pwd=;";
+        private static string connectionString = "Server=localhost;Database=mi_banco_db;Uid=root;Pwd=root;";
 
         static void Main(string[] args)
         {

@@ -25,7 +25,7 @@ if (isset($_POST["ingresar"])) {
         $_SESSION["nombre"] = $fila["nombre"];
         $_SESSION["documento"] = $fila["documento"];
 
-        header("Location: panel_usuario.php");
+        header("Location: resumen.php");
         exit();
 
     } else {
