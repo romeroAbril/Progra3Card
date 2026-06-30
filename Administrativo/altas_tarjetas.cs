@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using MySql.Data.MySqlClient; 
 
 namespace Progra3Card.Administrativo
@@ -146,11 +146,36 @@ namespace Progra3Card.Administrativo
 
                     cmdTarjeta.ExecuteNonQuery();
 
-                    trans.Commit();
+                    // Obtener el número de cuenta generado automáticamente
+                    string sqlCuenta = @"SELECT num_cuenta
+                             FROM tarjetas
+                             WHERE numero_tarjeta = @numeroTarjeta";
 
-                     Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine("\nTarjeta emitida correctamente.");
-                    Console.ResetColor();
+                            MySqlCommand cmdCuenta = new MySqlCommand(sqlCuenta, conn, trans);
+                            cmdCuenta.Parameters.AddWithValue("@numeroTarjeta", numeroTarjeta);
+
+                            int numCuenta = Convert.ToInt32(cmdCuenta.ExecuteScalar());
+
+                            // Crear la primera liquidación en cero
+                            string sqlLiquidacion = @"
+                            INSERT INTO liquidaciones
+                                (num_cuenta, periodo, fecha_vencimiento, total_a_pagar, pago_minimo)
+                                    VALUES
+                                    (@cuenta, @periodo, @vencimiento, 0, 0)";
+
+                                MySqlCommand cmdLiquidacion = new MySqlCommand(sqlLiquidacion, conn, trans);
+
+                                cmdLiquidacion.Parameters.AddWithValue("@cuenta", numCuenta);
+                                cmdLiquidacion.Parameters.AddWithValue("@periodo", DateTime.Now.ToString("yyyy-MM"));
+                                cmdLiquidacion.Parameters.AddWithValue("@vencimiento", DateTime.Now.AddMonths(1).ToString("yyyy-MM-dd"));
+
+                         cmdLiquidacion.ExecuteNonQuery();
+
+                         trans.Commit();
+
+                         Console.ForegroundColor = ConsoleColor.Green;
+                         Console.WriteLine("\nTarjeta emitida correctamente.");
+                         Console.ResetColor();
                 }
                  catch (Exception ex)
                 {
@@ -357,8 +382,8 @@ namespace Progra3Card.Administrativo
 
 
 
-             static void MenuEmitirLiquidacion()
-            {
+        static void MenuEmitirLiquidacion()
+        {
                  Console.Clear();
                  Console.WriteLine("--- EMITIR NUEVA LIQUIDACIÓN ---");
 
@@ -368,59 +393,76 @@ namespace Progra3Card.Administrativo
                 Console.Write("Período (AAAA-MM): ");
                 string periodo = Console.ReadLine();
 
-                Console.Write("Fecha de Vencimiento (AAAA-MM-DD): ");
-                string fechaVencimiento = Console.ReadLine();
+             Console.Write("Fecha de Vencimiento (AAAA-MM-DD): ");
+             string fechaVencimiento = Console.ReadLine();
 
-                Console.Write("Total a Pagar: ");
-                decimal total = Convert.ToDecimal(Console.ReadLine());
+            Console.Write("Total a Pagar: ");
+            decimal total = Convert.ToDecimal(Console.ReadLine());
 
-                Console.Write("Pago Mínimo: ");
-                decimal pagoMinimo = Convert.ToDecimal(Console.ReadLine());
+            Console.Write("Pago Mínimo: ");
+            decimal pagoMinimo = Convert.ToDecimal(Console.ReadLine());
 
-                using (MySqlConnection conn = new MySqlConnection(connectionString))
+            using (MySqlConnection conn = new MySqlConnection(connectionString))
+            {
+                conn.Open();
+
+             try
+             {  
+                 // Verificar que exista la cuenta
+                 string sqlExiste = "SELECT COUNT(*) FROM tarjetas WHERE num_cuenta = @cuenta";
+
+                 MySqlCommand cmdExiste = new MySqlCommand(sqlExiste, conn);
+                 cmdExiste.Parameters.AddWithValue("@cuenta", numCuenta);
+
+                int existe = Convert.ToInt32(cmdExiste.ExecuteScalar());
+
+                if (existe == 0)
                 {
-                    conn.Open();
-
-                    try
-                        {
-                         string sql = @"INSERT INTO liquidaciones
-                                        (num_cuenta, periodo, fecha_vencimiento, total_a_pagar, pago_minimo)
-                                         VALUES
-                                        (@cuenta, @periodo, @vencimiento, @total, @pagoMinimo)";
-
-                             MySqlCommand cmd = new MySqlCommand(sql, conn);
-
-                            cmd.Parameters.AddWithValue("@cuenta", numCuenta);
-                            cmd.Parameters.AddWithValue("@periodo", periodo);
-                            cmd.Parameters.AddWithValue("@vencimiento", fechaVencimiento);
-                            cmd.Parameters.AddWithValue("@total", total);
-                            cmd.Parameters.AddWithValue("@pagoMinimo", pagoMinimo);
-
-                            int filas = cmd.ExecuteNonQuery();
-
-                            if (filas > 0)
-                            {
-                                Console.ForegroundColor = ConsoleColor.Green;
-                                Console.WriteLine("\nLiquidación emitida correctamente.");
-                            }
-                            else
-                            {
-                                Console.ForegroundColor = ConsoleColor.Red;
-                                Console.WriteLine("\nNo se pudo emitir la liquidación.");
-                            }
-                        }
-                         catch (Exception ex)
-                        {
-                            Console.ForegroundColor = ConsoleColor.Red;
-                            Console.WriteLine("\nError: " + ex.Message);
-                        }
-
-                    Console.ResetColor();
+                     Console.ForegroundColor = ConsoleColor.Red;
+                     Console.WriteLine("\nNo existe una tarjeta con ese número de cuenta.");
+                     Console.ResetColor();
+                     Console.ReadKey();
+                    return;
                 }
 
-                     Console.WriteLine("\nPresione una tecla para volver al menú...");
-                     Console.ReadKey();
+                string sql = @"INSERT INTO liquidaciones
+                                (num_cuenta, periodo, fecha_vencimiento, total_a_pagar, pago_minimo)
+                                 VALUES
+                                (@cuenta, @periodo, @vencimiento, @total, @pagoMinimo)";
+
+                 MySqlCommand cmd = new MySqlCommand(sql, conn);
+
+                 cmd.Parameters.AddWithValue("@cuenta", numCuenta);
+                 cmd.Parameters.AddWithValue("@periodo", periodo);
+                 cmd.Parameters.AddWithValue("@vencimiento", fechaVencimiento);
+                 cmd.Parameters.AddWithValue("@total", total);
+                 cmd.Parameters.AddWithValue("@pagoMinimo", pagoMinimo);
+
+                int filas = cmd.ExecuteNonQuery();
+
+                if (filas > 0)
+                {
+                     Console.ForegroundColor = ConsoleColor.Green;
+                     Console.WriteLine("\nLiquidación emitida correctamente.");
+                }
+                else
+                 {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("\nNo se pudo emitir la liquidación.");
+                 }
+             }
+             catch (Exception ex)
+             {
+                 Console.ForegroundColor = ConsoleColor.Red;
+                 Console.WriteLine("\nError: " + ex.Message);
+             }
+
+                Console.ResetColor();
             }
+
+         Console.WriteLine("\nPresione una tecla para volver al menú...");
+         Console.ReadKey();
+        }
 
     }
 }
