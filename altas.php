@@ -15,37 +15,54 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $passwordB = $_POST["passwordB"];
 
     if ($passwordA != $passwordB) {
-        die("❌ Las contraseñas no coinciden");
+        die("❌ Las contraseñas no coinciden.");
     }
 
-    $verificar = $conn->query("
-        SELECT * FROM usuarios 
-        WHERE documento = '$documento' 
-        OR email = '$email' 
-        OR usuario = '$usuario'
-    ");
+    // Buscar el cliente creado desde C#
+    $sql = "SELECT * FROM usuarios
+            WHERE documento='$documento'
+            AND tipo_doc='$tipo_doc'
+            AND nombre='$nombre'
+            AND apellido='$apellido'
+            AND fecha_nacimiento='$fecha'
+            AND email='$email'";
 
-    if (!$verificar) {
-        die("❌ Error SELECT: " . $conn->error);
+    $resultado = $conn->query($sql);
+
+    if ($resultado->num_rows == 0) {
+        die("❌ Los datos ingresados no corresponden a un cliente registrado.");
     }
 
-    if ($verificar->num_rows > 0) {
-        die("❌ Usuario ya existe");
+    $datos = $resultado->fetch_assoc();
+
+    // Verificar si ya activó la cuenta
+    if ($datos["usuario"] != NULL) {
+        die("❌ Esta cuenta ya fue activada.");
     }
 
-    $sql = "INSERT INTO usuarios 
-    (documento, tipo_doc, nombre, apellido, fecha_nacimiento, email, usuario, password)
-    VALUES 
-    ('$documento', '$tipo_doc', '$nombre', '$apellido', '$fecha', '$email', '$usuario', '$passwordA')";
+    // Verificar que el usuario elegido no exista
+    $existe = $conn->query("SELECT * FROM usuarios WHERE usuario='$usuario'");
 
-    if ($conn->query($sql) === TRUE) {
-        echo "✅ Usuario registrado correctamente";
+    if ($existe->num_rows > 0) {
+        die("❌ Ese nombre de usuario ya está en uso.");
+    }
+
+    // Activar la cuenta
+    $update = "UPDATE usuarios
+               SET usuario='$usuario',
+                   password='$passwordA'
+               WHERE documento='$documento'";
+
+    if ($conn->query($update) === TRUE) {
+        echo "✅ Cuenta activada correctamente. Ya puede iniciar sesión.";
     } else {
-        echo "❌ Error INSERT: " . $conn->error;
+        echo "❌ Error: " . $conn->error;
     }
 
 } else {
-    echo "❌ No llegó POST";
+    echo "❌ No llegó información por POST.";
 }
+
+$conn->close();
 
 ?>
