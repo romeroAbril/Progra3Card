@@ -53,11 +53,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                    password='$passwordA'
                WHERE documento='$documento'";
 
+
     if ($conn->query($update) === TRUE) {
-        echo "✅ Cuenta activada correctamente. Ya puede iniciar sesión.";
+        echo "✅ Cuenta activada correctamente. Serás redirigido...";
+
+        header("refresh:2;url=ingreso.html");
+        exit();
     } else {
-        echo "❌ Error: " . $conn->error;
-    }
+                echo "❌ Error: " . $conn->error;
+            }
 
 } else {
     echo "❌ No llegó información por POST.";
